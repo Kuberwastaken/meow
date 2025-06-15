@@ -59,7 +59,7 @@ People don't make new file formats simply because of one problem- they're very h
 
 ## Cross-Compatibility With PNGs
 
-MEOW uses a steganographic image format that embeds rich AI metadata while maintaining PNG compatibility. It's basically PNGs on Steroids.
+MEOW uses a steganographic image format that embeds metadata that's needed for AI workflows while maintaining PNG compatibility. It's basically PNGs on Steroids.
 
 <table>
 <tr>
@@ -96,15 +96,15 @@ Unlike traditional formats that require special viewers, **MEOW files contain st
 
 ### Perfect for AI Applications
 
-MEOW is specifically designed for use with AI, embedding metadata that accelerates machine learning workflows and enhances LLM image understanding:
+MEOW is specifically designed for use with AI, embedding metadata that is really useful for machine learning workflows and potentially can enhance LLM image understanding
 
 <table>
 <tr>
 <td width="50%">
 
 #### Problems with Current Formats
-- **Metadata can very easily be stripped** - when images are processed or shared
-- **Limited to basic descriptive information** - not optimized for AI
+- **Metadata can very easily be stripped** - when images are processed or shared - this is usually for security but is a bad tradeoff for AI
+- **Limited to basic descriptive information** - not optimized for machine learning
 - **Separate from actual image processing** - requires additional steps
 - **Not designed for machine learning workflows**
 
@@ -113,10 +113,9 @@ MEOW is specifically designed for use with AI, embedding metadata that accelerat
 
 #### Performance Benefits
 - **Reduced preprocessing time** with embedded parameters
-- **Consistent input formats** across different models
-- **Training data enrichment** with embedded annotations
-- **Enhanced LLM understanding** with structured metadata
-- **Multimodal AI acceleration** for vision-language models
+- **Training data enrichment** with embedded annotations and other data
+- **Enhanced LLM understanding** with structured metadata and features like attention maps
+- **Multimodal AI acceleration** for vision-language models, no need for seperate JSONs now
 
 </td>
 </tr>
@@ -124,7 +123,7 @@ MEOW is specifically designed for use with AI, embedding metadata that accelerat
 
 ## MEOW's AI-Optimized Advantages
 
-MEOW doesn't just store metadata - it embeds AI-specific intelligence that traditional formats can't handle. When any image is converted to a .meow, this data is automatically added in the conversion process:
+MEOW embeds AI-specific parameters that traditional formats can't (or well, can with a ton of modification can) handle. When any image is converted to a .meow, this data is automatically added in the conversion process:
 
 1. **Pre-computed AI Features**
   *   Optimal preprocessing parameters embedded in the file
@@ -152,13 +151,13 @@ MEOW uses **LSB (Least Significant Bit) steganography** to hide AI data inside s
 
 ### The Technical Magic
 1. **Load standard PNG image** into memory
-2. **Compress AI metadata** using zlib compression
+2. **Compress AI metadata** using compression
 3. **Hide data in pixel LSBs** (2 bits per RGB channel = 6 bits/pixel)
 4. **Save as PNG** with `.meow` extension
 5. **Result**: Perfect PNG that works everywhere + hidden AI data
 
 ### Storage Specifications
-- **Magic Header**: `MEOW_STEG_V2` (12 bytes)
+- **The Magic Header**: `MEOW_STEG_V2` (12 bytes)
 - **Capacity**: 6 bits per pixel (RGB channels only)
 - **Compression**: zlib level 9 for maximum efficiency
 - **Overhead**: Typically 15-25% of original file size
@@ -208,11 +207,11 @@ PNG Header + Image Data
 
 ### AI-Enhanced Capabilities
 - **Steganographic storage** (invisible to standard viewers)
-- **Rich AI metadata** (object detection, features, attention)
+- **Better-for-AI metadata** (object detection, features, attention)
 - **Model optimization hints** (preprocessing parameters)
 - **Training data annotations** (bounding boxes, classes)
 - **Performance analytics** (complexity scores, saliency maps)
-- **Lossless data preservation** (survives file operations)
+- **Lossless data preservation** (survives file operations if lossless)
 - **LLM context enhancement** (structured descriptions for better AI understanding)
 - **Multimodal AI support** (vision-language model acceleration)
 
@@ -274,7 +273,7 @@ PNG Header + Image Data
 </tr>
 </table>
 
-### Why Steganographic MEOW Wins
+### Why Steganographic MEOW Is Awesome Here
 
 **The Problem**: AI-enhanced formats typically sacrifice compatibility for features  
 **The Solution**: Hide AI data inside universally-compatible PNG files  
