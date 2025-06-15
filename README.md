@@ -291,10 +291,10 @@ PNG Header + Image Data
 ### 📦 Setup
 ```powershell
 # Clone the repository
-git clone https://github.com/kuberwastaken/MEOW-FILES.git
+git clone https://github.com/kuberwastaken/meow.git
 
 # Navigate to the directory
-cd MEOW-FILES
+cd meow
 
 # Install dependencies
 pip install -r requirements.txt
