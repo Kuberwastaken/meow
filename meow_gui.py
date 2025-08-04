@@ -56,6 +56,9 @@ class MeowGUI:
         menubar.add_cascade(label="AI", menu=ai_menu)
         ai_menu.add_command(label="Export Features...", command=self.export_ai_features)
         ai_menu.add_command(label="Import Annotations...", command=self.import_annotations)
+        ai_menu.add_separator()
+        ai_menu.add_command(label="Set AI Generation Data...", command=self.set_ai_generation_dialog)
+        ai_menu.add_command(label="Clear AI Generation Data", command=self.clear_ai_generation_data)
     
     def setup_main_interface(self):
         """Setup main interface"""
@@ -115,6 +118,9 @@ class MeowGUI:
         # Metadata tab
         self.setup_metadata_tab()
         
+        # AI Generation Detection tab
+        self.setup_ai_generation_tab()
+        
         # Objects tab
         self.setup_objects_tab()
         
@@ -139,6 +145,48 @@ class MeowGUI:
         
         self.metadata_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
         metadata_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+    
+    def setup_ai_generation_tab(self):
+        """Setup AI generation detection tab"""
+        ai_gen_frame = ttk.Frame(self.ai_notebook)
+        self.ai_notebook.add(ai_gen_frame, text="AI Detection")
+        
+        # AI Generation Status
+        status_frame = ttk.LabelFrame(ai_gen_frame, text="Generation Status")
+        status_frame.pack(fill=tk.X, pady=5)
+        
+        self.ai_generated_var = tk.StringVar(value="Unknown")
+        self.confidence_var = tk.StringVar(value="N/A")
+        
+        ttk.Label(status_frame, text="AI Generated:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        self.ai_generated_label = ttk.Label(status_frame, textvariable=self.ai_generated_var, font=('Arial', 9, 'bold'))
+        self.ai_generated_label.grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        ttk.Label(status_frame, text="Confidence:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(status_frame, textvariable=self.confidence_var).grid(row=1, column=1, sticky=tk.W, padx=5, pady=2)
+        
+        # Generation Details
+        details_frame = ttk.LabelFrame(ai_gen_frame, text="Generation Details")
+        details_frame.pack(fill=tk.BOTH, expand=True, pady=5)
+        
+        # Create a scrollable text widget for generation details
+        details_text_frame = ttk.Frame(details_frame)
+        details_text_frame.pack(fill=tk.BOTH, expand=True, padx=5, pady=5)
+        
+        self.ai_details_text = tk.Text(details_text_frame, wrap=tk.WORD, height=15)
+        details_scroll = ttk.Scrollbar(details_text_frame, orient=tk.VERTICAL, command=self.ai_details_text.yview)
+        self.ai_details_text.configure(yscrollcommand=details_scroll.set)
+        
+        self.ai_details_text.pack(side=tk.LEFT, fill=tk.BOTH, expand=True)
+        details_scroll.pack(side=tk.RIGHT, fill=tk.Y)
+        
+        # Watermark Detection
+        watermark_frame = ttk.LabelFrame(ai_gen_frame, text="Watermark Detection")
+        watermark_frame.pack(fill=tk.X, pady=5)
+        
+        self.watermark_var = tk.StringVar(value="Not Detected")
+        ttk.Label(watermark_frame, text="Status:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=2)
+        ttk.Label(watermark_frame, textvariable=self.watermark_var).grid(row=0, column=1, sticky=tk.W, padx=5, pady=2)
     
     def setup_objects_tab(self):
         """Setup object detection display tab"""
@@ -406,16 +454,23 @@ class MeowGUI:
         """Update AI features display"""
         # Clear all displays
         self.metadata_text.delete(1.0, tk.END)
+        self.ai_details_text.delete(1.0, tk.END)
         self.objects_tree.delete(*self.objects_tree.get_children())
         self.attention_tree.delete(*self.attention_tree.get_children())
         self.preprocessing_text.delete(1.0, tk.END)
         self.chunks_tree.delete(*self.chunks_tree.get_children())
         self.size_text.delete(1.0, tk.END)
         
+        # Reset AI generation variables
+        self.ai_generated_var.set("Unknown")
+        self.confidence_var.set("N/A")
+        self.watermark_var.set("Not Detected")
+        
         # Check if we have steganographic MEOW data
         if not hasattr(self, 'extracted_meow_data') or not self.extracted_meow_data:
             self.metadata_text.insert(tk.END, "No AI metadata available.\nLoad a Steganographic MEOW file to see AI features.")
             self.features_var.set("No features available")
+            self.ai_details_text.insert(tk.END, "No AI generation data available.\nLoad a MEOW file with AI metadata.")
             return
         
         meow_data = self.extracted_meow_data
@@ -434,11 +489,100 @@ class MeowGUI:
             if 'ai_enhanced' in annotations:
                 metadata_info += f"AI Enhanced: {annotations['ai_enhanced']}\n"
         
+        # AI Generation Detection
+        if self.ai_metadata:
+            metadata_info += f"\nAI Generation Detection\n{'-'*20}\n"
+            
+            if self.ai_metadata.ai_generated is not None:
+                metadata_info += f"AI Generated: {'Yes' if self.ai_metadata.ai_generated else 'No'}\n"
+            
+            if self.ai_metadata.generation_service:
+                metadata_info += f"Service: {self.ai_metadata.generation_service}\n"
+            
+            if self.ai_metadata.generation_platform:
+                metadata_info += f"Platform: {self.ai_metadata.generation_platform}\n"
+            
+            if self.ai_metadata.model_version:
+                metadata_info += f"Model Version: {self.ai_metadata.model_version}\n"
+            
+            if self.ai_metadata.generation_time:
+                metadata_info += f"Generated: {self.ai_metadata.generation_time}\n"
+            
+            if self.ai_metadata.generation_prompt:
+                prompt_preview = self.ai_metadata.generation_prompt[:50] + "..." if len(self.ai_metadata.generation_prompt) > 50 else self.ai_metadata.generation_prompt
+                metadata_info += f"Prompt: {prompt_preview}\n"
+            
+            if self.ai_metadata.has_reference_image is not None:
+                metadata_info += f"Has Reference Image: {'Yes' if self.ai_metadata.has_reference_image else 'No'}\n"
+            
+            if self.ai_metadata.watermark_detected is not None:
+                metadata_info += f"Watermark Detected: {'Yes' if self.ai_metadata.watermark_detected else 'No'}\n"
+            
+            if self.ai_metadata.confidence_score is not None:
+                metadata_info += f"Detection Confidence: {self.ai_metadata.confidence_score:.2f}\n"
+        
         if 'features' in meow_data:
             features = meow_data['features']
-            metadata_info += f"Features Available: {len(features)} types\n"
+            metadata_info += f"\nFeatures Available: {len(features)} types\n"
             
         self.metadata_text.insert(tk.END, metadata_info)
+        
+        # Update AI Generation Detection display
+        if self.ai_metadata:
+            # Update status variables
+            if self.ai_metadata.ai_generated is not None:
+                status = "Yes" if self.ai_metadata.ai_generated else "No"
+                self.ai_generated_var.set(status)
+                
+                # Color code the status
+                if self.ai_metadata.ai_generated:
+                    self.ai_generated_label.configure(foreground='red')
+                else:
+                    self.ai_generated_label.configure(foreground='green')
+            
+            if self.ai_metadata.confidence_score is not None:
+                self.confidence_var.set(f"{self.ai_metadata.confidence_score:.1%}")
+            
+            if self.ai_metadata.watermark_detected is not None:
+                watermark_status = "Detected" if self.ai_metadata.watermark_detected else "Not Detected"
+                self.watermark_var.set(watermark_status)
+            
+            # Update details text
+            details_info = "AI Generation Details\n" + "="*25 + "\n\n"
+            
+            if self.ai_metadata.generation_service:
+                details_info += f"Service: {self.ai_metadata.generation_service}\n"
+            
+            if self.ai_metadata.generation_platform:
+                details_info += f"Platform: {self.ai_metadata.generation_platform}\n"
+            
+            if self.ai_metadata.model_version:
+                details_info += f"Model Version: {self.ai_metadata.model_version}\n"
+            
+            if self.ai_metadata.generation_time:
+                details_info += f"Generation Time: {self.ai_metadata.generation_time}\n"
+            
+            if self.ai_metadata.has_reference_image is not None:
+                ref_status = "Yes" if self.ai_metadata.has_reference_image else "No"
+                details_info += f"Has Reference Image: {ref_status}\n"
+            
+            if self.ai_metadata.reference_image_url:
+                details_info += f"Reference URL: {self.ai_metadata.reference_image_url}\n"
+            
+            if self.ai_metadata.generation_prompt:
+                details_info += f"\nGeneration Prompt:\n{'-'*18}\n{self.ai_metadata.generation_prompt}\n"
+            
+            if self.ai_metadata.generation_settings:
+                details_info += f"\nGeneration Settings:\n{'-'*19}\n"
+                for key, value in self.ai_metadata.generation_settings.items():
+                    details_info += f"{key}: {value}\n"
+            
+            if details_info == "AI Generation Details\n" + "="*25 + "\n\n":
+                details_info += "No AI generation details available."
+            
+            self.ai_details_text.insert(tk.END, details_info)
+        else:
+            self.ai_details_text.insert(tk.END, "No AI generation metadata found.\nThis may be a natural image or the AI detection data is not available.")
         
         # Update objects (from AI annotations)
         if 'ai_annotations' in meow_data and 'bounding_boxes' in meow_data['ai_annotations']:
@@ -488,6 +632,41 @@ class MeowGUI:
                                values=(f"{len(str(meow_data.get('ai_annotations', {})))} chars", "AI annotations"))
         
         self.size_text.insert(tk.END, stego_info)
+    
+    def set_ai_generation_metadata(self, ai_generated=None, service=None, platform=None, 
+                                 model_version=None, generation_time=None, prompt=None,
+                                 has_reference_image=None, reference_url=None, 
+                                 settings=None, watermark_detected=None, confidence_score=None):
+        """Set AI generation metadata"""
+        if not self.ai_metadata:
+            from meow_format import AIMetadata
+            self.ai_metadata = AIMetadata()
+        
+        if ai_generated is not None:
+            self.ai_metadata.ai_generated = ai_generated
+        if service is not None:
+            self.ai_metadata.generation_service = service
+        if platform is not None:
+            self.ai_metadata.generation_platform = platform
+        if model_version is not None:
+            self.ai_metadata.model_version = model_version
+        if generation_time is not None:
+            self.ai_metadata.generation_time = generation_time
+        if prompt is not None:
+            self.ai_metadata.generation_prompt = prompt
+        if has_reference_image is not None:
+            self.ai_metadata.has_reference_image = has_reference_image
+        if reference_url is not None:
+            self.ai_metadata.reference_image_url = reference_url
+        if settings is not None:
+            self.ai_metadata.generation_settings = settings
+        if watermark_detected is not None:
+            self.ai_metadata.watermark_detected = watermark_detected
+        if confidence_score is not None:
+            self.ai_metadata.confidence_score = confidence_score
+        
+        # Update the display
+        self.update_ai_display()
     
     def on_object_select(self, event):
         """Handle object selection in treeview"""
@@ -574,6 +753,117 @@ class MeowGUI:
                 
             except Exception as e:
                 messagebox.showerror("Error", f"Import failed: {e}")
+    
+    def set_ai_generation_dialog(self):
+        """Open dialog to set AI generation metadata"""
+        if not self.current_image:
+            messagebox.showwarning("No Image", "Please load an image first.")
+            return
+        
+        # Create dialog window
+        dialog = tk.Toplevel(self.root)
+        dialog.title("Set AI Generation Data")
+        dialog.geometry("400x500")
+        dialog.transient(self.root)
+        dialog.grab_set()
+        
+        # Variables
+        ai_generated_var = tk.BooleanVar()
+        service_var = tk.StringVar()
+        platform_var = tk.StringVar()
+        model_var = tk.StringVar()
+        prompt_var = tk.StringVar()
+        has_ref_var = tk.BooleanVar()
+        ref_url_var = tk.StringVar()
+        watermark_var = tk.BooleanVar()
+        confidence_var = tk.DoubleVar()
+        
+        # AI Generated
+        ttk.Label(dialog, text="AI Generated:").grid(row=0, column=0, sticky=tk.W, padx=5, pady=5)
+        ttk.Checkbutton(dialog, variable=ai_generated_var).grid(row=0, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # Service
+        ttk.Label(dialog, text="Service:").grid(row=1, column=0, sticky=tk.W, padx=5, pady=5)
+        service_combo = ttk.Combobox(dialog, textvariable=service_var, 
+                                   values=["DALL-E", "Midjourney", "Stable Diffusion", "ChatGPT", "Adobe Firefly", "Other"])
+        service_combo.grid(row=1, column=1, sticky=tk.EW, padx=5, pady=5)
+        
+        # Platform
+        ttk.Label(dialog, text="Platform:").grid(row=2, column=0, sticky=tk.W, padx=5, pady=5)
+        platform_combo = ttk.Combobox(dialog, textvariable=platform_var,
+                                    values=["OpenAI", "Discord", "RunwayML", "Hugging Face", "Adobe", "Other"])
+        platform_combo.grid(row=2, column=1, sticky=tk.EW, padx=5, pady=5)
+        
+        # Model Version
+        ttk.Label(dialog, text="Model Version:").grid(row=3, column=0, sticky=tk.W, padx=5, pady=5)
+        ttk.Entry(dialog, textvariable=model_var).grid(row=3, column=1, sticky=tk.EW, padx=5, pady=5)
+        
+        # Prompt
+        ttk.Label(dialog, text="Prompt:").grid(row=4, column=0, sticky=tk.NW, padx=5, pady=5)
+        prompt_text = tk.Text(dialog, height=4, width=30)
+        prompt_text.grid(row=4, column=1, sticky=tk.EW, padx=5, pady=5)
+        
+        # Has Reference Image
+        ttk.Label(dialog, text="Has Reference Image:").grid(row=5, column=0, sticky=tk.W, padx=5, pady=5)
+        ttk.Checkbutton(dialog, variable=has_ref_var).grid(row=5, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # Reference URL
+        ttk.Label(dialog, text="Reference URL:").grid(row=6, column=0, sticky=tk.W, padx=5, pady=5)
+        ttk.Entry(dialog, textvariable=ref_url_var).grid(row=6, column=1, sticky=tk.EW, padx=5, pady=5)
+        
+        # Watermark Detected
+        ttk.Label(dialog, text="Watermark Detected:").grid(row=7, column=0, sticky=tk.W, padx=5, pady=5)
+        ttk.Checkbutton(dialog, variable=watermark_var).grid(row=7, column=1, sticky=tk.W, padx=5, pady=5)
+        
+        # Confidence Score
+        ttk.Label(dialog, text="Confidence (0-1):").grid(row=8, column=0, sticky=tk.W, padx=5, pady=5)
+        confidence_spin = ttk.Spinbox(dialog, from_=0.0, to=1.0, increment=0.1, textvariable=confidence_var)
+        confidence_spin.grid(row=8, column=1, sticky=tk.EW, padx=5, pady=5)
+        
+        # Buttons
+        button_frame = ttk.Frame(dialog)
+        button_frame.grid(row=9, column=0, columnspan=2, pady=20)
+        
+        def apply_data():
+            prompt_text_content = prompt_text.get(1.0, tk.END).strip()
+            self.set_ai_generation_metadata(
+                ai_generated=ai_generated_var.get(),
+                service=service_var.get() if service_var.get() else None,
+                platform=platform_var.get() if platform_var.get() else None,
+                model_version=model_var.get() if model_var.get() else None,
+                prompt=prompt_text_content if prompt_text_content else None,
+                has_reference_image=has_ref_var.get(),
+                reference_url=ref_url_var.get() if ref_url_var.get() else None,
+                watermark_detected=watermark_var.get(),
+                confidence_score=confidence_var.get() if confidence_var.get() > 0 else None
+            )
+            dialog.destroy()
+        
+        ttk.Button(button_frame, text="Apply", command=apply_data).pack(side=tk.LEFT, padx=5)
+        ttk.Button(button_frame, text="Cancel", command=dialog.destroy).pack(side=tk.LEFT, padx=5)
+        
+        # Configure grid weights
+        dialog.columnconfigure(1, weight=1)
+    
+    def clear_ai_generation_data(self):
+        """Clear AI generation metadata"""
+        if self.ai_metadata:
+            self.ai_metadata.ai_generated = None
+            self.ai_metadata.generation_service = None
+            self.ai_metadata.generation_platform = None
+            self.ai_metadata.model_version = None
+            self.ai_metadata.generation_time = None
+            self.ai_metadata.generation_prompt = None
+            self.ai_metadata.has_reference_image = None
+            self.ai_metadata.reference_image_url = None
+            self.ai_metadata.generation_settings = None
+            self.ai_metadata.watermark_detected = None
+            self.ai_metadata.confidence_score = None
+            
+            self.update_ai_display()
+            messagebox.showinfo("Cleared", "AI generation data has been cleared.")
+        else:
+            messagebox.showinfo("No Data", "No AI generation data to clear.")
     
     def update_status(self, message="Ready"):
         """Update status bar"""

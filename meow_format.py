@@ -19,7 +19,7 @@ from dataclasses import dataclass, asdict
 try:
     from reedsolo import RSCodec
 except ImportError:
-    RSCodec = None  # Will handle in tests
+    RSCodec = None  # Will gracefully fallback without ECC
 
 
 @dataclass
@@ -43,6 +43,19 @@ class AIMetadata:
     complexity_map: Dict = None
     texture_analysis: Dict = None
     edge_density: float = None
+    
+    # AI Generation Detection
+    ai_generated: bool = None
+    generation_service: str = None  # e.g., "DALL-E", "Midjourney", "Stable Diffusion", "ChatGPT", etc.
+    generation_platform: str = None  # e.g., "OpenAI", "Discord", "RunwayML", "Hugging Face", etc.
+    generation_time: str = None  # ISO datetime when generated
+    generation_prompt: str = None  # Original text prompt used
+    has_reference_image: bool = None  # Whether a reference/seed image was used
+    reference_image_url: str = None  # URL or path to reference image if available
+    model_version: str = None  # e.g., "DALL-E 3", "Midjourney v6", "SD XL 1.0", etc.
+    generation_settings: Dict = None  # Model-specific settings (steps, guidance, etc.)
+    watermark_detected: bool = None  # Whether AI watermark was detected
+    confidence_score: float = None  # AI detection confidence (0.0-1.0)
 
 
 class MeowFormat:

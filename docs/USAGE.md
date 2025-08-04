@@ -5,8 +5,7 @@ Complete guide for using the MEOW Image File Format tools.
 ## Quick Start
 
 1. **Install dependencies**: `pip install -r requirements.txt`
-2. **Run tests**: `python test_meow.py`
-3. **Launch GUI**: `python meow_gui.py`
+2. **Launch GUI**: `python meow_gui.py`
 
 ## Applications Overview
 
@@ -296,7 +295,5 @@ The MEOW format is designed to be simple and extensible.
 
 **Code structure:**
 - `meow_format.py`: Core format implementation
-- `meow_converter.py`: CLI tools
-- `meow_viewer.py`: Simple GUI viewer  
-- `meow_gui.py`: Complete GUI application
-- `test_meow.py`: Test suite and examples
+- `meow_format.py`: Core MEOW format implementation
+- `meow_gui.py`: Complete GUI application with AI detection
