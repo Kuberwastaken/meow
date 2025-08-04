@@ -304,9 +304,9 @@ def create_custom_chunk(self, data):
    python meow_gui_enhanced.py
    ```
 
-4. **Run Comprehensive Tests**:
+4. **Launch GUI Application**:
    ```bash
-   python test_enhanced.py
+   python meow_gui.py
    ```
 
 ## Contact & Support
