@@ -15,6 +15,12 @@ from PIL import Image
 import numpy as np
 from dataclasses import dataclass, asdict
 
+# Error correction
+try:
+    from reedsolo import RSCodec
+except ImportError:
+    RSCodec = None  # Will handle in tests
+
 
 @dataclass
 class AIMetadata:
@@ -175,7 +181,7 @@ class MeowFormat:
             return None, None
     
     def _prepare_meow_data(self, img: Image.Image, ai_annotations: Dict = None) -> bytes:
-        """Prepare MEOW data for steganographic hiding"""
+        """Prepare MEOW data for steganographic hiding, with ECC and redundancy"""
         try:
             # Generate AI features
             features = self._generate_features(img)
@@ -196,9 +202,18 @@ class MeowFormat:
             json_data = json.dumps(meow_structure, separators=(',', ':')).encode('utf-8')
             compressed_data = zlib.compress(json_data, level=9)
             
-            # Create final structure: header + size + compressed data
-            size_bytes = struct.pack('<I', len(compressed_data))
-            return self.MAGIC_HEADER + size_bytes + compressed_data
+            # ECC encoding (Reed-Solomon)
+            if RSCodec:
+                # Add redundancy: 32 bytes ECC
+                rsc = RSCodec(32)
+                ecc_data = rsc.encode(compressed_data)
+            else:
+                ecc_data = compressed_data
+            
+            # Create final structure: header + size + ECC data
+            size_bytes = struct.pack('<I', len(ecc_data))
+            # Redundant header: repeat header twice for robustness
+            return self.MAGIC_HEADER + self.MAGIC_HEADER + size_bytes + ecc_data
             
         except Exception as e:
             print(f"Error preparing MEOW data: {e}")
@@ -252,7 +267,7 @@ class MeowFormat:
             return img
     
     def _extract_hidden_data(self, img: Image.Image) -> Optional[Dict]:
-        """Extract hidden MEOW data from image"""
+        """Extract hidden MEOW data from image, with ECC and redundancy"""
         try:
             # Convert to numpy array
             img_array = np.array(img)
@@ -276,25 +291,45 @@ class MeowFormat:
                     byte_str = binary_data[i:i+8]
                     extracted_bytes.append(int(byte_str, 2))
             
-            # Look for MEOW magic header
+            # Look for MEOW magic header (redundant)
             extracted_data = bytes(extracted_bytes)
-            magic_pos = extracted_data.find(self.MAGIC_HEADER)
+            magic_pos = extracted_data.find(self.MAGIC_HEADER + self.MAGIC_HEADER)
             
             if magic_pos == -1:
-                return None  # No MEOW data found
+                # Fallback: try single header
+                magic_pos = extracted_data.find(self.MAGIC_HEADER)
+                if magic_pos == -1:
+                    return None  # No MEOW data found
+                start_pos = magic_pos + len(self.MAGIC_HEADER)
+            else:
+                start_pos = magic_pos + 2 * len(self.MAGIC_HEADER)
             
-            # Extract size and compressed data
-            start_pos = magic_pos + len(self.MAGIC_HEADER)
             if start_pos + 4 > len(extracted_data):
                 return None
             
             size = struct.unpack('<I', extracted_data[start_pos:start_pos+4])[0]
-            compressed_start = start_pos + 4
+            ecc_start = start_pos + 4
             
-            if compressed_start + size > len(extracted_data):
+            if ecc_start + size > len(extracted_data):
                 return None
             
-            compressed_data = extracted_data[compressed_start:compressed_start+size]
+            ecc_data = extracted_data[ecc_start:ecc_start+size]
+            
+            # ECC decode
+            if RSCodec:
+                rsc = RSCodec(32)
+                try:
+                    decoded_result = rsc.decode(ecc_data)
+                    # reedsolo returns (data, ecc) tuple
+                    if isinstance(decoded_result, tuple):
+                        compressed_data = decoded_result[0]
+                    else:
+                        compressed_data = decoded_result
+                except Exception as e:
+                    print(f"ECC decode failed: {e}")
+                    return None
+            else:
+                compressed_data = ecc_data
             
             # Decompress and parse JSON
             json_data = zlib.decompress(compressed_data)
